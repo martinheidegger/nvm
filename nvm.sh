@@ -12,8 +12,6 @@
 
 NVM_SCRIPT_SOURCE="$_"
 
-timer "root_1"
-
 last_timer=""
 last_name=""
 home=$(dirname $0)
@@ -30,6 +28,7 @@ timer() {
   last_timer=$new_timer
 }
 
+timer "root_1"
 
 nvm_echo() {
   command printf %s\\n "$*" 2>/dev/null || {
