@@ -316,12 +316,14 @@ nvm_version() {
 
   local NVM_NODE_PREFIX
   NVM_NODE_PREFIX="$(nvm_node_prefix)"
+  timer "nvm_version_2"
   case "_${PATTERN}" in
     "_${NVM_NODE_PREFIX}" | "_${NVM_NODE_PREFIX}-")
       PATTERN="stable"
     ;;
   esac
   VERSION="$(nvm_ls "${PATTERN}" | command tail -1)"
+  timer "nvm_version_3"
   if [ -z "${VERSION}" ] || [ "_${VERSION}" = "_N/A" ]; then
     nvm_echo "N/A"
     return 3;
@@ -801,6 +803,7 @@ nvm_strip_iojs_prefix() {
 }
 
 nvm_ls() {
+  timer "nvm_ls_1"
   local PATTERN
   PATTERN="${1-}"
   local VERSIONS
@@ -809,6 +812,8 @@ nvm_ls() {
     nvm_ls_current
     return
   fi
+
+  timer "nvm_ls_2"
 
   local NVM_IOJS_PREFIX
   NVM_IOJS_PREFIX="$(nvm_iojs_prefix)"
@@ -820,7 +825,8 @@ nvm_ls() {
   NVM_VERSION_DIR_NEW="$(nvm_version_dir new)"
   local NVM_VERSION_DIR_OLD
   NVM_VERSION_DIR_OLD="$(nvm_version_dir old)"
-
+  
+  timer "nvm_ls_3"
   case "${PATTERN}" in
     "${NVM_IOJS_PREFIX}" | "${NVM_NODE_PREFIX}" )
       PATTERN="${PATTERN}-"
@@ -832,6 +838,7 @@ nvm_ls() {
       PATTERN="$(nvm_ensure_version_prefix "${PATTERN}")"
     ;;
   esac
+  timer "nvm_ls_4"
   if [ "${PATTERN}" = 'N/A' ]; then
     return
   fi
