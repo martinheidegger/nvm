@@ -12,6 +12,25 @@
 
 NVM_SCRIPT_SOURCE="$_"
 
+timer "root_1"
+
+last_timer=""
+last_name=""
+home=$(dirname $0)
+
+timer() {
+  local new_timer="$(date +%s.%N)"
+  if [ -z "$last_timer" ]; then
+    echo "Starting: $1" > $home/timings.txt
+  else
+    local duration=$(bc <<< "$new_timer-$last_timer")
+    echo "$last_name → $1 _ ${duration}s" >> $home/timings.txt
+  fi
+  last_name=$1
+  last_timer=$new_timer
+}
+
+
 nvm_echo() {
   command printf %s\\n "$*" 2>/dev/null || {
     nvm_echo() {
@@ -92,7 +111,9 @@ nvm_is_version_installed() {
 }
 
 nvm_print_npm_version() {
+  timer "nvm_print_npm_version_1"
   if nvm_has "npm"; then
+    timer "nvm_print_npm_version_2"
     command printf " (npm v$(npm --version 2>/dev/null))"
   fi
 }
@@ -277,6 +298,7 @@ nvm_ensure_version_installed() {
 
 # Expand a version using the version cache
 nvm_version() {
+  timer "nvm_version_1"
   local PATTERN
   PATTERN="${1-}"
   local VERSION
@@ -1912,6 +1934,7 @@ nvm_npm_global_modules() {
 
 nvm_die_on_prefix() {
   local NVM_DELETE_PREFIX
+  timer "nvm_die_on_prefix_1"
   NVM_DELETE_PREFIX="$1"
   case "$NVM_DELETE_PREFIX" in
     0|1) ;;
@@ -1920,12 +1943,14 @@ nvm_die_on_prefix() {
       return 1
     ;;
   esac
+  timer "nvm_die_on_prefix_2"
   local NVM_COMMAND
   NVM_COMMAND="$2"
   if [ -z "$NVM_COMMAND" ]; then
     nvm_err 'Second argument "nvm command" must be nonempty'
     return 2
   fi
+  timer "nvm_die_on_prefix_3"
 
   if [ -n "${PREFIX-}" ] && ! (nvm_tree_contains_path "$NVM_DIR" "$PREFIX" >/dev/null 2>&1); then
     nvm deactivate >/dev/null 2>&1
@@ -1934,32 +1959,46 @@ nvm_die_on_prefix() {
     return 3
   fi
 
+  timer "nvm_die_on_prefix_4"
+
   if [ -n "${NPM_CONFIG_PREFIX-}" ] && ! (nvm_tree_contains_path "$NVM_DIR" "$NPM_CONFIG_PREFIX" >/dev/null 2>&1); then
     nvm deactivate >/dev/null 2>&1
     nvm_err "nvm is not compatible with the \"NPM_CONFIG_PREFIX\" environment variable: currently set to \"$NPM_CONFIG_PREFIX\""
     nvm_err 'Run `unset NPM_CONFIG_PREFIX` to unset it.'
     return 4
   fi
+ 
+  timer "nvm_die_on_prefix_5"
 
   if ! nvm_has 'npm'; then
     return
   fi
 
+  timer "nvm_die_on_prefix_6"
+
   local NVM_NPM_PREFIX
+  timer "nvm_die_on_prefix_7"
+  #NVM_NPM_PREFIX="/home/parallels/.nvm/versions/node/v7.2.0"
   NVM_NPM_PREFIX="$(npm config --loglevel=warn get prefix)"
+  timer "nvm_die_on_prefix_8"
   if ! (nvm_tree_contains_path "$NVM_DIR" "$NVM_NPM_PREFIX" >/dev/null 2>&1); then
+    timer "nvm_die_on_prefix_8_1"
     if [ "_$NVM_DELETE_PREFIX" = "_1" ]; then
       npm config --loglevel=warn delete prefix
     else
       nvm deactivate >/dev/null 2>&1
+      timer "nvm_die_on_prefix_8_1_1"
       nvm_err "nvm is not compatible with the npm config \"prefix\" option: currently set to \"$NVM_NPM_PREFIX\""
       if nvm_has 'npm'; then
+        timer "nvm_die_on_prefix_8_1_2"
         nvm_err "Run \`npm config delete prefix\` or \`$NVM_COMMAND\` to unset it."
       else
+        timer "nvm_die_on_prefix_8_1_3"
         nvm_err "Run \`$NVM_COMMAND\` to unset it."
       fi
       return 10
     fi
+    timer "nvm_die_on_prefix_8_2"
   fi
 }
 
@@ -2503,6 +2542,7 @@ nvm() {
       unset NVM_BIN NVM_PATH
     ;;
     "use" )
+      timer "use_1"
       local PROVIDED_VERSION
       local NVM_USE_SILENT
       NVM_USE_SILENT=0
@@ -2528,6 +2568,8 @@ nvm() {
         shift
       done
 
+      timer "use_2"
+
       if [ -n "${NVM_LTS-}" ]; then
         VERSION="$(nvm_match_version "lts/${NVM_LTS:-*}")"
       elif [ -z "$PROVIDED_VERSION" ]; then
@@ -2540,10 +2582,14 @@ nvm() {
         VERSION="$(nvm_match_version "$PROVIDED_VERSION")"
       fi
 
+      timer "use_3"
+
       if [ -z "${VERSION}" ]; then
         >&2 nvm --help
         return 127
       fi
+  
+      timer "use_4"
 
       if [ "_$VERSION" = '_system' ]; then
         if nvm_has_system_node && nvm deactivate >/dev/null 2>&1; then
@@ -2574,6 +2620,7 @@ nvm() {
       if ! nvm_ensure_version_installed "${VERSION}"; then
         return $?
       fi
+      timer "use_5"
 
       local NVM_VERSION_DIR
       NVM_VERSION_DIR="$(nvm_version_path "$VERSION")"
@@ -2593,36 +2640,49 @@ nvm() {
         export MANPATH
       fi
       export PATH
+      timer "use_6"
       hash -r
+      timer "use_7"
       export NVM_PATH="$NVM_VERSION_DIR/lib/node"
       export NVM_BIN="$NVM_VERSION_DIR/bin"
       if [ "${NVM_SYMLINK_CURRENT-}" = true ]; then
         command rm -f "$NVM_DIR/current" && ln -s "$NVM_VERSION_DIR" "$NVM_DIR/current"
       fi
+      timer "use_8"
       local NVM_USE_OUTPUT
+      timer "use_9"
       if [ $NVM_USE_SILENT -ne 1 ]; then
+        timer "use_9_1"
         if nvm_is_iojs_version "$VERSION"; then
+          timer "use_9_2"
           NVM_USE_OUTPUT="Now using io.js $(nvm_strip_iojs_prefix "$VERSION")$(nvm_print_npm_version)"
         else
+          timer "use_9_3"
           NVM_USE_OUTPUT="Now using node $VERSION$(nvm_print_npm_version)"
         fi
+        timer "use_9_4"
       fi
       if [ "_$VERSION" != "_system" ]; then
         local NVM_USE_CMD
         NVM_USE_CMD="nvm use --delete-prefix"
+        timer "use_10"
         if [ -n "$PROVIDED_VERSION" ]; then
           NVM_USE_CMD="$NVM_USE_CMD $VERSION"
         fi
+        timer "use_11"
         if [ $NVM_USE_SILENT -eq 1 ]; then
           NVM_USE_CMD="$NVM_USE_CMD --silent"
         fi
+        timer "use_12"
         if ! nvm_die_on_prefix "$NVM_DELETE_PREFIX" "$NVM_USE_CMD"; then
           return 11
         fi
+        timer "use_13"
       fi
       if [ -n "${NVM_USE_OUTPUT-}" ]; then
         nvm_echo "$NVM_USE_OUTPUT"
       fi
+      timer "use_14"
     ;;
     "run" )
       local provided_version
@@ -3161,6 +3221,7 @@ nvm_auto() {
   local NVM_MODE
   NVM_MODE="${1-}"
   local VERSION
+  timer "nvm_auto_1"
   if [ "_$NVM_MODE" = '_install' ]; then
     VERSION="$(nvm_alias default 2>/dev/null || nvm_echo)"
     if [ -n "$VERSION" ]; then
@@ -3169,7 +3230,8 @@ nvm_auto() {
       nvm install >/dev/null
     fi
   elif [ "_$NVM_MODE" = '_use' ]; then
-   VERSION="$(nvm_resolve_local_alias default 2>/dev/null || nvm_echo)"
+    VERSION="$(nvm_resolve_local_alias default 2>/dev/null || nvm_echo)"
+    timer "nvm_auto_2"
     if [ -n "$VERSION" ]; then
       nvm use --silent "$VERSION" >/dev/null
     elif nvm_rc_version >/dev/null 2>&1; then
