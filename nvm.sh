@@ -17,15 +17,18 @@ last_name=""
 home=$(dirname $0)
 
 timer() {
-  local new_timer="$(date +%s.%N)"
-  if [ -z "$last_timer" ]; then
-    echo "Starting: $1" > $home/timings.txt
+  local timer_b="$(date +%s.%N)"
+  local timer_a="$last_timer"
+  local name_a="$last_name"
+  local name_b="$1"
+  last_name="$name_b"
+  last_timer="$timer_b"
+  if [ -z "$timer_a" ]; then
+    echo "\"name_a\", \"name_b\", \"duration\"" > $home/timings.csv
   else
-    local duration=$(bc <<< "$new_timer-$last_timer")
-    echo "$last_name → $1 _ ${duration}s" >> $home/timings.txt
+    local duration=$(bc <<< "$timer_b-$timer_a")
+    echo "\"$name_a\", \"$name_b\", ${duration}" >> $home/timings.csv
   fi
-  last_name=$1
-  last_timer=$new_timer
 }
 
 timer "root_1"
@@ -2613,6 +2616,8 @@ nvm() {
         fi
         return 8
       fi
+
+      timer "use_4_1"
 
       # This nvm_ensure_version_installed call can be a performance bottleneck
       # on shell startup. Perhaps we can optimize it away or make it faster.
